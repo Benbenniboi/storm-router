@@ -50,6 +50,14 @@ export const MAP_STYLES: MapStyle[] = [
 export const MAPTILER_VALIDATE_URL = (key: string) =>
   `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
 
+/**
+ * If VITE_MAPTILER_KEY is set in .env (never committed), the key gate is
+ * skipped and this value is used directly. In production builds, users
+ * always go through the gate.
+ */
+export const ENV_MAPTILER_KEY: string | null =
+  import.meta.env.VITE_MAPTILER_KEY ?? null;
+
 export const NWS_BASE_URL   = 'https://api.weather.gov';
 export const OSRM_BASE_URL  = 'https://router.project-osrm.org';
 export const INTERCEPT_LOOKAHEAD_MILES = 15;
