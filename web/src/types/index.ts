@@ -31,11 +31,23 @@ export interface UserLocation {
   longitude: number;
 }
 
+export interface RouteStep {
+  instruction: string;
+  streetName: string;
+  distanceMiles: number;
+  durationSeconds: number;
+  maneuverType: string;       // 'depart' | 'turn' | 'arrive' | 'merge' | etc.
+  maneuverModifier?: string;  // 'left' | 'right' | 'straight' | 'slight left' | etc.
+  bearingAfter: number;       // compass bearing out of this step
+  coordinate: [number, number]; // [lon, lat] start of step
+}
+
 export interface RouteResult {
   alertId: string;
   coordinates: Array<[number, number]>;
   distanceMiles: number;
   durationMinutes: number;
+  steps: RouteStep[];
 }
 
 export interface MapStyle {
