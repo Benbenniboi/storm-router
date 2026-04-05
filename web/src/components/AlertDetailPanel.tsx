@@ -9,9 +9,11 @@ interface Props {
   routeLoading: boolean;
   onClose: () => void;
   onNavigate: () => void;
+  hasLocation: boolean;
+  onSetLocation: () => void;
 }
 
-export default function AlertDetailPanel({ alert, route, routeLoading, onClose, onNavigate }: Props) {
+export default function AlertDetailPanel({ alert, route, routeLoading, onClose, onNavigate, hasLocation, onSetLocation }: Props) {
   const color = EVENT_COLORS[alert.event] ?? SEVERITY_COLORS[alert.severity] ?? '#AAA';
 
   const distStr = alert.distanceMiles != null
@@ -87,15 +89,13 @@ export default function AlertDetailPanel({ alert, route, routeLoading, onClose, 
         {/* Intercept button */}
         <div className="p-4 border-b border-gray-800">
           <button
-            onClick={onNavigate}
+            onClick={hasLocation ? onNavigate : onSetLocation}
             disabled={routeLoading || !alert.interceptPoint}
             className={`
               w-full py-2.5 px-4 rounded-lg text-sm font-semibold border transition-all duration-200
-              ${routeLoading
+              ${routeLoading || !alert.interceptPoint
                 ? 'border-gray-700 text-gray-500 cursor-not-allowed'
-                : !alert.interceptPoint
-                  ? 'border-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'border-opacity-100 hover:opacity-80 active:scale-[0.98]'
+                : 'border-opacity-100 hover:opacity-80 active:scale-[0.98]'
               }
             `}
             style={alert.interceptPoint && !routeLoading
@@ -105,13 +105,18 @@ export default function AlertDetailPanel({ alert, route, routeLoading, onClose, 
           >
             {routeLoading
               ? 'Routing…'
-              : route
-                ? `Re-route — ${route.distanceMiles.toFixed(1)} mi · ${Math.round(route.durationMinutes)} min`
-                : 'Route to Intercept Point'
+              : !hasLocation
+                ? 'Set your location to route'
+                : route
+                  ? `Re-route — ${route.distanceMiles.toFixed(1)} mi · ${Math.round(route.durationMinutes)} min`
+                  : 'Route to Intercept Point'
             }
           </button>
           {!alert.interceptPoint && (
             <p className="text-gray-500 text-xs mt-2 text-center">No storm motion data — intercept unavailable</p>
+          )}
+          {!hasLocation && alert.interceptPoint && (
+            <p className="text-gray-500 text-xs mt-2 text-center">Click above to enter your starting location</p>
           )}
         </div>
 

@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-@import 'maplibre-gl/dist/maplibre-gl.css';
+/* maplibre-gl/dist/maplibre-gl.css is imported in main.tsx so it loads
+   before Tailwind's base reset can interfere with the map canvas styles */
 
 /* Make the map container fill its parent */
 .maplibregl-map {
