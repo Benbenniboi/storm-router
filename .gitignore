@@ -64,3 +64,31 @@ yarn-error.log
 
 # testing
 /coverage
+
+# Android build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+
+# iOS build artifacts
+ios/build/
+ios/Pods/
+ios/*.xcworkspace
+ios/*.xcuserdata
+ios/DerivedData/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo

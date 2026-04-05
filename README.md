@@ -1,79 +1,141 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# StormRouter
 
-# Getting Started
+A React Native Android app for storm chasers that pulls live NWS severe weather alerts, renders warning polygons on a map, calculates storm motion vectors, and routes you to an intercept point — all using free APIs.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+> **Screenshots** — *coming soon*
 
-## Step 1: Start the Metro Server
+---
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## Features
 
-To start Metro, run the following command from the _root_ of your React Native project:
+- Live severe weather alerts from the [NWS API](https://www.weather.gov/documentation/services-web-api) (Tornado Warnings, SVR, Flash Flood, PDS, etc.)
+- Warning polygons color-coded by severity on a Google Maps base
+- Storm motion arrows with speed labels (parsed from NWS alert parameters)
+- Calculates distance from your GPS to the nearest polygon edge
+- Computes a suggested intercept point 15 miles ahead of the storm's projected path
+- Routes you to the intercept point via the free [OSRM routing API](http://project-osrm.org/) (no API key required)
+- Bottom sheet detail panel: event type, WFO, expiration, distance, drive ETA, raw NWS description
+- Alert list view sorted by proximity with filter/search
+- Auto-refresh every 60 seconds
+- Pulsing user location marker
+
+---
+
+## Prerequisites
+
+| Tool | Version |
+|------|---------|
+| Node.js | 18+ |
+| JDK | 17+ (OpenJDK recommended) |
+| Android SDK | API 33 (target), API 24 (min) |
+| Android Studio | Hedgehog or newer |
+| React Native CLI | 0.73+ |
+
+Set the following environment variables:
 
 ```bash
-# using npm
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+```
+
+---
+
+## Setup
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/YOUR_USERNAME/storm-router.git
+cd storm-router/StormRouter
+
+# 2. Install JS dependencies
+npm install
+
+# 3. (Optional) Add your Google Maps API key
+#    Edit android/app/src/main/AndroidManifest.xml:
+#    Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with a key from console.cloud.google.com
+#    The app works without a key in debug builds on most devices.
+
+# 4. Start Metro
 npm start
 
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
+# 5. Run on Android (separate terminal)
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### For iOS
+---
+
+## Build for Release
 
 ```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+cd android
+./gradlew assembleRelease
+# APK output: android/app/build/outputs/apk/release/app-release.apk
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+---
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## Project Structure
 
-## Step 3: Modifying your App
+```
+src/
+├── api/
+│   ├── nwsApi.ts        — NWS /alerts/active fetcher + Nominatim geocoder
+│   └── osrmApi.ts       — OSRM driving route fetcher
+├── components/
+│   ├── AlertBottomSheet.tsx   — Slide-up detail panel
+│   ├── AlertListItem.tsx      — Row component for list view
+│   ├── AlertPolygon.tsx       — react-native-maps Polygon wrapper
+│   ├── RouteOverlay.tsx       — Polyline + intercept badge on map
+│   ├── StormMotionArrow.tsx   — Dashed arrow showing storm vector
+│   └── UserLocationMarker.tsx — Pulsing GPS dot
+├── hooks/
+│   ├── useAlerts.ts     — NWS polling + auto-refresh
+│   └── useLocation.ts   — GPS watch + manual entry
+├── screens/
+│   ├── MapScreen.tsx    — Main map view
+│   └── ListScreen.tsx   — Proximity-sorted alert list
+├── utils/
+│   ├── alerts.ts        — Storm motion parser, formatters
+│   └── geometry.ts      — Turf.js wrappers: distance, intercept, coordinate conversion
+├── constants/index.ts   — Colors, event codes, API URLs
+└── types/index.ts       — TypeScript interfaces
+```
 
-Now that you have successfully run the app, let's modify it.
+---
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+## API References
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+| API | Docs |
+|-----|------|
+| NWS Alerts | https://www.weather.gov/documentation/services-web-api#/default/get_alerts_active |
+| NWS Alert Schema | https://api.weather.gov/schemas/Alert.json |
+| OSRM Routing | http://project-osrm.org/docs/v5.24.0/api/ |
+| Nominatim Geocoding | https://nominatim.org/release-docs/develop/api/Search/ |
+| Turf.js | https://turfjs.org/docs/ |
 
-## Congratulations! :tada:
+---
 
-You've successfully run and modified your React Native App. :partying_face:
+## Tech Stack
 
-### Now what?
+- **React Native 0.73** (CLI, not Expo)
+- **react-native-maps** — Google Maps rendering
+- **react-native-geolocation-service** — GPS
+- **@turf/turf** — polygon math (distance, bearing, destination, nearest-point-on-line)
+- **axios** — HTTP client
+- **@gorhom/bottom-sheet** + **react-native-reanimated** — animated bottom sheet
+- **@react-navigation/bottom-tabs** — tab navigation
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+---
 
-# Troubleshooting
+## Branching Strategy
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable releases |
+| `dev` | Active development |
 
-# Learn More
+---
 
-To learn more about React Native, take a look at the following resources:
+## License
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+MIT
