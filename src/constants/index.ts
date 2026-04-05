@@ -68,7 +68,18 @@ export const OSRM_BASE_URL = 'https://router.project-osrm.org';
 /** NWS alerts base URL */
 export const NWS_BASE_URL = 'https://api.weather.gov';
 
-export const MAP_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+/**
+ * MapTiler API key — free tier: 100k tile loads/month.
+ * Sign up at https://cloud.maptiler.com/auth/widget?mode=add
+ * Replace this placeholder with your key.
+ */
+export const MAPTILER_KEY = 'YOUR_MAPTILER_API_KEY_HERE';
+
+export const MAP_STYLES = {
+  streets: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
+  dark: `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`,
+  satellite: `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`,
+} as const;
 
 export const COLORS = {
   background: '#0D1117',

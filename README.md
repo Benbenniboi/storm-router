@@ -50,10 +50,9 @@ cd storm-router/StormRouter
 # 2. Install JS dependencies
 npm install
 
-# 3. (Optional) Add your Google Maps API key
-#    Edit android/app/src/main/AndroidManifest.xml:
-#    Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with a key from console.cloud.google.com
-#    The app works without a key in debug builds on most devices.
+# 3. Get a free MapTiler API key
+#    Sign up at https://cloud.maptiler.com/auth/widget?mode=add (free tier = 100k tile loads/month)
+#    Edit src/constants/index.ts and replace YOUR_MAPTILER_API_KEY_HERE with your key.
 
 # 4. Start Metro
 npm start
@@ -82,12 +81,11 @@ src/
 │   ├── nwsApi.ts        — NWS /alerts/active fetcher + Nominatim geocoder
 │   └── osrmApi.ts       — OSRM driving route fetcher
 ├── components/
-│   ├── AlertBottomSheet.tsx   — Slide-up detail panel
-│   ├── AlertListItem.tsx      — Row component for list view
-│   ├── AlertPolygon.tsx       — react-native-maps Polygon wrapper
-│   ├── RouteOverlay.tsx       — Polyline + intercept badge on map
-│   ├── StormMotionArrow.tsx   — Dashed arrow showing storm vector
-│   └── UserLocationMarker.tsx — Pulsing GPS dot
+│   ├── AlertBottomSheet.tsx    — Slide-up detail panel
+│   ├── AlertListItem.tsx       — Row component for list view
+│   ├── AlertPolygonsLayer.tsx  — MapLibre ShapeSource: all warning polygons (data-driven)
+│   ├── RouteLayer.tsx          — MapLibre ShapeSource: OSRM route polyline + intercept badge
+│   └── StormMotionLayer.tsx    — MapLibre ShapeSource: dashed storm motion arrows + speed labels
 ├── hooks/
 │   ├── useAlerts.ts     — NWS polling + auto-refresh
 │   └── useLocation.ts   — GPS watch + manual entry
@@ -118,7 +116,7 @@ src/
 ## Tech Stack
 
 - **React Native 0.73** (CLI, not Expo)
-- **react-native-maps** — Google Maps rendering
+- **@maplibre/maplibre-react-native** — MapLibre GL rendering with MapTiler vector tiles (free tier)
 - **react-native-geolocation-service** — GPS
 - **@turf/turf** — polygon math (distance, bearing, destination, nearest-point-on-line)
 - **axios** — HTTP client

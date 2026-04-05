@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -6,20 +6,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 
-import AlertPolygon from '../components/AlertPolygon';
-import StormMotionArrow from '../components/StormMotionArrow';
-import UserLocationMarker from '../components/UserLocationMarker';
-import RouteOverlay from '../components/RouteOverlay';
+import AlertPolygonsLayer from '../components/AlertPolygonsLayer';
+import StormMotionLayer from '../components/StormMotionLayer';
+import RouteLayer from '../components/RouteLayer';
 import AlertBottomSheet from '../components/AlertBottomSheet';
 
 import { useAlerts } from '../hooks/useAlerts';
 import { useLocation } from '../hooks/useLocation';
 import { getRoute } from '../api/osrmApi';
 import { ParsedAlert, RouteResult } from '../types';
-import { COLORS, DEFAULT_SETTINGS } from '../constants';
+import { COLORS, DEFAULT_SETTINGS, MAP_STYLES } from '../constants';
+
+// Initialize MapLibre — no Mapbox token needed, key is in the tile URL
+MapLibreGL.setAccessToken(null);
 
 export default function MapScreen() {
   const { location, permissionDenied, error: locError } = useLocation();
@@ -32,33 +34,21 @@ export default function MapScreen() {
   const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
 
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  const handleAlertPress = useCallback(
-    (alert: ParsedAlert) => {
-      setSelectedAlert(alert);
-      setActiveRoute(null);
-      bottomSheetRef.current?.expand();
+  const handleAlertPress = useCallback((alert: ParsedAlert) => {
+    setSelectedAlert(alert);
+    setActiveRoute(null);
+    bottomSheetRef.current?.expand();
 
-      // Zoom to the polygon centroid
-      if (alert.geometry) {
-        const coords = getGeometryCenter(alert.geometry);
-        if (coords) {
-          mapRef.current?.animateToRegion(
-            {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              latitudeDelta: 2.5,
-              longitudeDelta: 2.5,
-            },
-            800,
-          );
-        }
-      }
-    },
-    [],
-  );
+    // Fly camera to polygon center
+    const center = getGeometryCenter(alert.geometry);
+    if (center && cameraRef.current) {
+      cameraRef.current.flyTo(center, 800);
+      cameraRef.current.zoomTo(6, 800);
+    }
+  }, []);
 
   const handleNavigate = useCallback(
     async (alert: ParsedAlert) => {
@@ -74,13 +64,14 @@ export default function MapScreen() {
         );
         setActiveRoute(result);
 
-        // Fit map to show route
-        if (result?.coordinates.length) {
-          const lats = result.coordinates.map(c => c[1]);
+        if (result?.coordinates.length && cameraRef.current) {
           const lons = result.coordinates.map(c => c[0]);
-          mapRef.current?.fitToCoordinates(
-            result.coordinates.map(([lon, lat]) => ({ latitude: lat, longitude: lon })),
-            { edgePadding: { top: 60, right: 40, bottom: 300, left: 40 }, animated: true },
+          const lats = result.coordinates.map(c => c[1]);
+          cameraRef.current.fitBounds(
+            [Math.max(...lons), Math.max(...lats)],
+            [Math.min(...lons), Math.min(...lats)],
+            [60, 40, 320, 40],
+            800,
           );
         }
       } finally {
@@ -95,59 +86,53 @@ export default function MapScreen() {
     setActiveRoute(null);
   }, []);
 
-  const initialRegion = location
-    ? {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 5,
-        longitudeDelta: 5,
-      }
-    : {
-        // Default to center of CONUS
-        latitude: 38.5,
-        longitude: -96,
-        latitudeDelta: 20,
-        longitudeDelta: 20,
-      };
+  const initialCenter: [number, number] = location
+    ? [location.longitude, location.latitude]
+    : [-96, 38.5]; // CONUS center
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
+      <MapLibreGL.MapView
         style={styles.map}
-        initialRegion={initialRegion}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass
-        rotateEnabled={false}
-        mapType="standard"
+        styleURL={MAP_STYLES.streets}
+        compassEnabled
+        logoEnabled={false}
+        attributionEnabled
+        attributionPosition={{ bottom: 8, right: 8 }}
       >
+        <MapLibreGL.Camera
+          ref={cameraRef}
+          zoomLevel={location ? 5 : 4}
+          centerCoordinate={initialCenter}
+          animationMode="flyTo"
+          animationDuration={800}
+        />
+
+        {/* GPS dot — built-in MapLibre user location */}
+        <MapLibreGL.UserLocation
+          visible
+          renderMode={MapLibreGL.UserLocationRenderMode.Native}
+          androidRenderMode="compass"
+        />
+
         {/* Warning polygons */}
-        {alerts.map(alert => (
-          <AlertPolygon key={alert.id} alert={alert} onPress={handleAlertPress} />
-        ))}
+        <AlertPolygonsLayer alerts={alerts} onAlertPress={handleAlertPress} />
 
         {/* Storm motion arrows */}
-        {alerts.map(alert => (
-          <StormMotionArrow key={`motion-${alert.id}`} alert={alert} />
-        ))}
+        <StormMotionLayer alerts={alerts} />
 
-        {/* Route overlay */}
-        {activeRoute && <RouteOverlay route={activeRoute} />}
+        {/* Active intercept route */}
+        {activeRoute && <RouteLayer route={activeRoute} />}
+      </MapLibreGL.MapView>
 
-        {/* User marker */}
-        {location && <UserLocationMarker location={location} />}
-      </MapView>
-
-      {/* Status bar */}
+      {/* Status pill */}
       <View style={styles.statusBar}>
         {loading || routeLoading ? (
           <ActivityIndicator size="small" color={COLORS.accent} />
         ) : (
           <TouchableOpacity onPress={refresh}>
             <Text style={styles.statusText}>
-              {alerts.length} alerts
+              {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
               {lastUpdated
                 ? ` · ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                 : ''}
@@ -156,7 +141,6 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Permission / error banners */}
       {permissionDenied && (
         <View style={styles.banner}>
           <Text style={styles.bannerText}>
@@ -170,7 +154,6 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Alert detail bottom sheet */}
       <AlertBottomSheet
         ref={bottomSheetRef}
         alert={selectedAlert}
@@ -184,7 +167,7 @@ export default function MapScreen() {
 
 function getGeometryCenter(
   geometry: ParsedAlert['geometry'],
-): { latitude: number; longitude: number } | null {
+): [number, number] | null {
   if (!geometry) {return null;}
   try {
     let ring: number[][];
@@ -192,12 +175,12 @@ function getGeometryCenter(
     else if (geometry.type === 'MultiPolygon') {ring = geometry.coordinates[0][0];}
     else {return null;}
 
-    const lats = ring.map(c => c[1]);
     const lons = ring.map(c => c[0]);
-    return {
-      latitude: (Math.min(...lats) + Math.max(...lats)) / 2,
-      longitude: (Math.min(...lons) + Math.max(...lons)) / 2,
-    };
+    const lats = ring.map(c => c[1]);
+    return [
+      (Math.min(...lons) + Math.max(...lons)) / 2,
+      (Math.min(...lats) + Math.max(...lats)) / 2,
+    ];
   } catch {
     return null;
   }
